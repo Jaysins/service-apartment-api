@@ -17,6 +17,8 @@ class BaseResource(Resource):
     def limit_query(self, query, **kwargs):
         """limit the results of a query to what want the user to see"""
         user_context = request.environ.get("user_context")
+        if not user_context:
+            return query
         user_id = user_context.get("id")
         raw_query = {"user_id": user_id}
         return query.raw(raw_query)
@@ -97,7 +99,7 @@ class BaseResource(Resource):
         except ValidationError as e:
 
             return abort(409, e.messages)
-        user_context = request.environ.get("user_context")
+        user_context = request.environ.get("user_context", {})
 
         resp = self.save(data=validated_data, user_context=user_context)
         resp_serializer = self.serializers.get("response")

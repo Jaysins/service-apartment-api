@@ -18,6 +18,7 @@ import json
 from marshmallow import ValidationError, EXCLUDE
 from pymodm import MongoModel, EmbeddedMongoModel
 from pymodm.queryset import QuerySet
+import settings
 
 
 class CustomJSONEncoder(json.JSONEncoder):
@@ -113,3 +114,12 @@ def populate_obj(obj, data):
             setattr(obj, name, value)
 
     return obj
+
+
+def add_resource(resource, *args):
+    """
+
+    """
+    from src import api
+    print(*[f"{settings.API_PREFIX if settings.API_PREFIX else ''}{arg}" for arg in args])
+    api.add_resource(resource, *[f"{settings.API_PREFIX if settings.API_PREFIX else ''}{arg}" for arg in args])

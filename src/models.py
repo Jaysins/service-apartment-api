@@ -13,13 +13,46 @@ from pymongo.write_concern import WriteConcern
 from pymongo.operations import IndexModel
 from pymodm import connect, fields, MongoModel, EmbeddedMongoModel
 from datetime import datetime, timedelta
+from pymodm.common import _import as common_import
 import bcrypt
 import json
 import jwt
+from pprint import pprint
 
 # Must always be run before any other database calls can follow
-
 connect(settings.MONGO_DB_URI, connect=False, maxPoolSize=None)
+print(settings.MONGO_DB_URI)
+
+
+class ReferenceField(fields.ReferenceField):
+    """
+    ReferenceField
+    """
+
+    def dereference_if_needed(self, value):
+        """
+
+        :param value:
+        :type value:
+        :return:
+        :rtype:
+        """
+
+        if isinstance(value, self.related_model):
+            return value
+        if self.model._mongometa._auto_dereference:
+            dereference_id = common_import('pymodm.dereference.dereference_id')
+            return dereference_id(self.related_model, value)
+        value_stick = self.related_model._mongometa.pk.to_python(value)
+        if not isinstance(value_stick, self.related_model):
+            # print(type(value_stick))
+            # value_stick = value_stick if value_stick and len(value_stick) > 10 else ObjectId(value_stick)
+            check = self.related_model.objects.raw({"_id": value_stick})
+            # print(check.count(), "dondnoenxe")
+            if check.count() < 1:
+                return self.related_model._mongometa.pk.to_python(value)
+            return check.first()
+        return self.related_model._mongometa.pk.to_python(value)
 
 
 class AppMixin:
@@ -116,64 +149,61 @@ class User(MongoModel, AppMixin):
         return encoded
 
 
-class Template(MongoModel, AppMixin):
-    """ Model for storing information about an entity or user who owns an account or set of accounts.
-    _id will be equivalent to either the user_id or the entity_id
-    """
-
-    name = fields.CharField(required=False, blank=True)
-    body = fields.CharField(required=False, blank=True)
-    user_id = fields.CharField(required=False, blank=True)
-    subject = fields.CharField(required=False, blank=True)
-    deleted = fields.BooleanField(required=False, default=False)
-    date_created = fields.DateTimeField(required=True, blank=False, default=datetime.utcnow)
-    last_updated = fields.DateTimeField(required=True, blank=False, default=datetime.utcnow)
-
-    class Meta:
-        """
-        Meta class
-        """
-
-        write_concern = WriteConcern(j=True)
-        ignore_unknown_fields = True
-        indexes = [
-            IndexModel([("_cls", pymongo.DESCENDING), ("deleted", pymongo.ASCENDING), ("subject", pymongo.ASCENDING),
-                        ("date_created", pymongo.DESCENDING), ])]
-
-
 class Address(EmbeddedMongoModel, AppMixin):
-    street = fields.CharField
-    street_line_2 = fields.CharField
-    state = fields.CharField
-    country = fields.CharField
+    street = fields.CharField(required=True, blank=False)
+    street_line_2 = fields.CharField(required=False, blank=True)
+    state = fields.CharField(required=True, blank=False)
+    country = fields.CharField(required=True, blank=False)
+
+
+class Option(AppMixin, MongoModel):
+    code = fields.CharField(primary_key=True)
+    name = fields.CharField(required=True, blank=False)
+
+
+class Feature(AppMixin, MongoModel):
+    code = fields.CharField(primary_key=True)
+    name = fields.CharField(required=True, blank=False)
+    description = fields.CharField(required=True, blank=False)
 
 
 class ApartmentOption(EmbeddedMongoModel):
-    option = fields.ReferenceField
-    value = fields.CharField
+    code = fields.ReferenceField(Option, required=True, blank=False)
+    value = fields.IntegerField(required=True, blank=False)
 
 
 class Apartment(MongoModel, AppMixin):
-    name = fields.CharField
-    description = fields.CharField
-    options = fields.EmbeddedDocumentListField(ApartmentOption)
-    price = fields.FloatField
-    negotiable = fields.BooleanField
-    address = fields.EmbeddedDocumentField
+    name = fields.CharField(required=True, blank=False)
+    description = fields.CharField(required=True, blank=False)
+    options = fields.EmbeddedDocumentListField(ApartmentOption, required=True, blank=False)
+    fee = fields.FloatField(required=True, blank=False)
+    service_fee = fields.FloatField(required=False, blank=True)
+    features = fields.ListField(fields.ReferenceField(Feature), required=False, blank=False)
+    negotiable = fields.BooleanField(required=False, blank=True, default=False)
+    active = fields.BooleanField(required=False, blank=True, default=False)
+    deleted = fields.BooleanField(required=False, blank=True, default=False)
+    address = fields.EmbeddedDocumentField(Address, required=True, blank=False)
+    images = fields.ListField(required=True, blank=False)
+    rating = fields.IntegerField(required=False, blank=True)
+    created_by = fields.ReferenceField(User, required=True, blank=False)
+    date_created = fields.DateTimeField(required=True, blank=False, default=datetime.utcnow)
+    last_updated = fields.DateTimeField(required=True, blank=False, default=datetime.utcnow)
 
 
 class Person(EmbeddedMongoModel, AppMixin):
-    name = fields.CharField
-    email = fields.CharField
-    phone = fields.CharField
+    name = fields.CharField(required=True, blank=False)
+    email = fields.CharField(required=True, blank=False)
+    phone = fields.CharField(required=True, blank=False)
 
-
-class CheckoutRequest(AppMixin, MongoModel):
-    customer = fields.EmbeddedDocumentField
-    checkin_date = fields.DateTimeField
-    checkout_date = fields.DateTimeField
-
-
-class ApprovedRequest(AppMixin, MongoModel):
-    checkout = fields.ReferenceField
-
+# class CheckoutRequest(AppMixin, MongoModel):
+#     customer = fields.EmbeddedDocumentField
+#     checkin_date = fields.DateTimeField
+#     checkout_date = fields.DateTimeField
+#     date_created = fields.DateTimeField(required=True, blank=False, default=datetime.utcnow)
+#     last_updated = fields.DateTimeField(required=True, blank=False, default=datetime.utcnow)
+#
+#
+# class ApprovedRequest(AppMixin, MongoModel):
+#     checkout = fields.ReferenceField
+#     date_created = fields.DateTimeField(required=True, blank=False, default=datetime.utcnow)
+#     last_updated = fields.DateTimeField(required=True, blank=False, default=datetime.utcnow)

@@ -1,18 +1,17 @@
 from bson import ObjectId
-from flask import abort
 
 from src.base.resource import BaseResource
-from src.schema import TemplateSchema, TemplateResponseSchema
+from src.schema import *
 
 
-class TemplateResource(BaseResource):
+class ApartmentResource(BaseResource):
     """
 
     """
 
     serializers = {
-        "default": TemplateSchema,
-        "response": TemplateResponseSchema
+        "default": ApartmentSchema,
+        "response": ApartmentResponseSchema
     }
 
     def query(self):
@@ -34,6 +33,28 @@ class TemplateResource(BaseResource):
         obj = self.service_klass.find_one({"_id": ObjectId(obj_id), "deleted": False})
         return obj
 
+    # :TODO take out save
+    def save(self, data, user_context=None):
+        """
+
+        :param data:
+        :type data:
+        :param user_context:
+        :type user_context:
+        :return:
+        :rtype:
+        """
+        if user_context:
+            data["user_id"] = user_context.get("id")
+        return self.service_klass.register(**data)
+
+
+class AdminApartmentResource(ApartmentResource):
+    serializers = {
+        "default": ApartmentSchema,
+        "response": ApartmentResponseSchema
+    }
+
     def save(self, data, user_context=None):
         """
 
@@ -45,5 +66,4 @@ class TemplateResource(BaseResource):
         :rtype:
         """
         data["user_id"] = user_context.get("id")
-        data["name"] = data.pop("template_name")
-        return self.service_klass.create(**data)
+        return self.service_klass.register(**data)

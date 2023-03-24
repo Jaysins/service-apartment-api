@@ -16,7 +16,7 @@ class AuthMiddleware(object):
 
         request = Request(environ)
         user_context = self.validate_token(token=request.headers.get("Authorization", None))
-        if not user_context and not self.check_ignored_endpoints(path=request.path):
+        if not user_context and not self.check_ignored_endpoints(path=request.path, base_path=self.settings.API_PREFIX):
             res = Response("Authorization failed", content_type='application/json', status=401)
             return res(environ, start_response)
 
@@ -41,16 +41,13 @@ class AuthMiddleware(object):
 
     def check_ignored_endpoints(self, path, base_path=''):
         """separate possible base api endpoints """
-
         if base_path is None:
             base_path = ""
         if not self.ignored_endpoints:
             return
 
-        stripped = path.strip(base_path)
-        relative_path = "/" + path.strip(base_path)
-        if stripped.startswith('/'):
-            relative_path = stripped
+        relative_path = path.split(base_path)[-1]
+
         for i in self.ignored_endpoints:
             if not i.startswith("/"):
                 i = "/" + i

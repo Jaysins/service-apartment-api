@@ -26,9 +26,10 @@ if ENV not in ["staging", "production"]:
     # Load settings variables using dotenv
     load_dotenv(verbose=True, dotenv_path=dotenv_path)
 
-MONGO_DB_URI = os.getenv("MONGO_DB_URI")
+MONGO_DB_URI = os.getenv("MONGO_DATABASE_URI")
 MONGO_DATABASE = os.getenv("MONGO_DATABASE")
 ENV = os.getenv("ENV")
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM")
 JWT_EXPIRES_IN_HOURS = int(os.getenv("JWT_EXPIRES_IN_HOURS", "200"))
+API_PREFIX = os.getenv("API_PREFIX", "/api/v1")
