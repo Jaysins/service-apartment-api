@@ -5,6 +5,8 @@ Data model file for application. This will connect to the mongo database and pro
 for the application service
 
 """
+from bson import SON
+from pymodm.context_managers import no_auto_dereference
 
 import settings
 import pymongo
@@ -57,6 +59,50 @@ class ReferenceField(fields.ReferenceField):
 
 class AppMixin:
     """ App mixin will hold special methods and field parameters to map to all model classes"""
+
+    def to_custom_son(self, exclude=None):
+        """Get this Model back as a :class:`~bson.son.SON` object.
+
+        :returns: SON representing this object as a MongoDB document.
+
+        """
+        son = SON()
+        exclude = exclude if exclude else []
+        with no_auto_dereference(self):
+            for field in self._mongometa.get_fields():
+                if field.is_undefined(self):
+                    continue
+                if exclude and field.attname in exclude:
+                    continue
+                value = self._data.get_python_value(field.attname, field.to_python)
+                if field.is_blank(value):
+                    son[field.mongo_name] = value
+                else:
+                    value = field.to_mongo(value)
+                    if type(value) is list:
+                        for i in value:
+                            if isinstance(i, SON):
+                                i.pop("_cls", None)
+                                for ex in exclude:
+                                    i.pop(ex, None)
+                    if isinstance(value, SON):
+                        value.pop("_cls", None)
+                        for ex in exclude:
+                            value.pop(ex, None)
+                    # print(field.mongo_name)
+
+                    # print(son[field.mongo_name])
+
+                    son[field.mongo_name] = field.to_mongo(value)
+        update_data = dict()
+        if "pk" not in exclude and son.get("_id"):
+            update_data.update(pk=str(son.get("_id")))
+        if not son.get("code") and "code" not in exclude:
+            update_data.update(code=son.get("_id"))
+        son.update(**update_data)
+        son.pop("_cls", None)
+
+        return son
 
     def to_dict(self, exclude=None, do_dump=False):
         """
@@ -232,12 +278,21 @@ class EmbeddedApartment(EmbeddedMongoModel, AppMixin):
     fee = fields.FloatField(required=True, blank=False)
     address = fields.EmbeddedDocumentField(Address, required=True, blank=False)
 
+    class Meta:
+        """
+        Meta class
+        """
+
+        write_concern = WriteConcern(j=True)
+        ignore_unknown_fields = True
+
 
 class AvailableApartment(AppMixin, MongoModel):
     apartment = fields.ReferenceField(Apartment, required=True)
     apartment_data = fields.EmbeddedDocumentField(EmbeddedApartment, required=True)
-    check_in_date = fields.DateTimeField(required=True, blank=False)
-    checkout_date = fields.DateTimeField(required=True, blank=False)
-    service_days = fields.IntegerField(required=True, blank=False)
+    check_in_date = fields.DateTimeField(required=False, blank=True)
+    checkout_date = fields.DateTimeField(required=False, blank=True)
+    service_days = fields.IntegerField(required=False, blank=True)
+    available = fields.BooleanField(required=False, blank=True)
     date_created = fields.DateTimeField(required=True, blank=False, default=datetime.utcnow)
     last_updated = fields.DateTimeField(required=True, blank=False, default=datetime.utcnow)

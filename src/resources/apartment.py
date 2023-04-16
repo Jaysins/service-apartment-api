@@ -34,7 +34,7 @@ class AvailableApartmentResource(ApartmentResource):
 class AdminApartmentResource(ApartmentResource):
     serializers = {
         "default": ApartmentSchema,
-        "make_available": ApartmentSchema,
+        "make_available": MakeApartmentAvailableSchema,
         "response": ApartmentResponseSchema
     }
 
@@ -68,4 +68,5 @@ class AdminApartmentResource(ApartmentResource):
         :return:
         :rtype:
         """
-        return self.service_klass.get(obj_id)
+        data["user_id"] = user_context.get("id")
+        return self.service_klass.make_available(obj_id, **data)

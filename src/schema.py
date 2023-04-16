@@ -100,9 +100,35 @@ class PersonSchema(ExcludeSchema):
 
 
 class ReservationSchema(ExcludeSchema):
-    guest = _fields.Nested(PersonSchema(), required=True, blank=False)
-    check_in_date = _fields.String(required=True, blank=False)
-    checkout_date = _fields.String(required=True, blank=False)
+    guest = _fields.Nested(PersonSchema(), required=True, allow_none=False)
+    check_in_date = _fields.String(required=True, allow_none=False)
+    checkout_date = _fields.String(required=True, allow_none=False)
     apartment = _fields.String(required=True, allow_none=False)
-    note = _fields.String(required=False, blank=True)
+    note = _fields.String(required=False, allow_none=True)
 
+
+class MakeApartmentAvailableSchema(ExcludeSchema):
+    check_in_date = _fields.String(required=False, allow_none=True)
+    check_out_date = _fields.String(required=False, allow_none=True)
+    service_days = _fields.Integer(required=False, allow_none=True)
+
+
+class NestedApartmentSchema(ExcludeSchema):
+    """
+
+    """
+    name = _fields.String(required=True, allow_none=False)
+    description = _fields.String(required=True, allow_none=False)
+    options = _fields.Nested(OptionSchema(), required=True, allow_none=False)
+    fee = _fields.Float(required=True, allow_none=False)
+    address = _fields.Nested(AddressResponseSchema(), required=True, allow_none=False)
+
+
+class AvailableApartmentSchema(ExcludeSchema):
+    apartment = _fields.Nested(ApartmentResponseSchema(), required=True)
+    apartment_data = _fields.Nested(NestedApartmentSchema(), required=True)
+    check_in_date = _fields.DateTime(required=True, allow_none=False)
+    checkout_date = _fields.DateTime(required=True, allow_none=False)
+    service_days = _fields.String(required=False, allow_none=True)
+    date_created = _fields.DateTime(required=True, allow_none=False)
+    last_updated = _fields.DateTime(required=True, allow_none=False)

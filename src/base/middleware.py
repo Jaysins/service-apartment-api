@@ -158,16 +158,39 @@ class RequestResponseMiddleware(BaseHTTPMiddleware):
 
     """
 
-    def __init__(self, app, settings):
+    def __init__(self, app, api, settings):
         super().__init__()
         self.app = app
+        self.api = api
         self.settings = settings
+
+    def get_named_param_from_path(self, request, resource):
+        """
+
+        :param request:
+        :type request:
+        :param resource:
+        :type resource:
+        :return:
+        :rtype:
+        """
+        base_path = self.api.url_for(resource)
+        endpoint = (request.path.replace(f"{base_path}/", "")).split("/")
+        if not endpoint:
+            return request
+        request.context.update(obj_id=endpoint[0])
+        if len(endpoint) < 2:
+            return request
+        request.context.update(resource_name=endpoint[1])
+        return request
 
     def dispatch(self, request, call_next):
 
         resource = self.app.view_functions.get(request.endpoint)
 
         resource_class = resource.view_class
+
+        request = self.get_named_param_from_path(request, resource=resource_class)
 
         validated_data = self.process_resource(request, resource=resource_class)
 
@@ -176,12 +199,9 @@ class RequestResponseMiddleware(BaseHTTPMiddleware):
 
         request.context.update(validated_data=validated_data)
 
-        print(request.context)
         response = call_next(request)
 
         req_method = request.method.lower()
-
-        print(request.values)
 
         if req_method == "get" and not response.obj_id:
             response = self.process_query(request, response, resource=resource_class)
@@ -194,7 +214,6 @@ class RequestResponseMiddleware(BaseHTTPMiddleware):
             return results
 
         if req_method == "get" and not response.obj_id:
-            print(response.context.get("resp", {}))
             response.data = json.dumps({"results": results, **response.context.get("resp", {})})
         else:
             response.data = json.dumps(results)
@@ -206,11 +225,20 @@ class RequestResponseMiddleware(BaseHTTPMiddleware):
         """
         print(self)
 
-        print(resource.serializers, resource)
         if request.method.lower() not in ["post", "put"]:
             return {}
 
+        resource_name = request.context.get("resource_name")
+        obj_id = request.context.get("obj_id")
         serializer = resource.serializers.get("default")
+
+        if obj_id:
+            serializer = resource.serializers.get(resource_name, serializer)
+        if resource_name:
+            serializer = resource.serializers.get(resource_name, serializer)
+
+        print("i am serializer================>"
+              "", serializer, resource_name)
         if not serializer:
             abort(404, {"desc": "cannot make request to this route"})
         return validate(request, serializer, header_data=request.headers)
@@ -300,7 +328,19 @@ class RequestResponseMiddleware(BaseHTTPMiddleware):
         """
 
         """
+
+        req_context = request.context
+
+        obj_id = req_context.get("obj_id")
+
+        resource_name = req_context.get("resource_name")
+
         serializer = resource.serializers.get("response")
+
+        if obj_id:
+            serializer = resource.serializers.get("%s_response" % obj_id, serializer)
+        if resource_name:
+            serializer = resource.serializers.get("%s_response" % resource_name, serializer)
 
         context = response.context
 
