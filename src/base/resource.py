@@ -102,7 +102,7 @@ class BaseResource(Resource):
 
         if not obj_id:
             base_query = self.query()
-            response.context = {"results": self.limit_query(base_query, req, user_context=user_context)}
+            response.context = {"results": self.limit_query(base_query, req=request, user_context=user_context)}
             return response
         obj = self.fetch(obj_id, req=request, user_context=user_context)
         if not obj:
