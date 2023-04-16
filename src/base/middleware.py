@@ -1,27 +1,123 @@
+import json
+
+from flask import abort
+from pymodm import MongoModel
+from pymodm.queryset import QuerySet
 from werkzeug.wrappers import Request, Response
+from flask_http_middleware import BaseHTTPMiddleware
 import jwt
+from marshmallow import EXCLUDE, ValidationError
+from bson import ObjectId
+from datetime import datetime
 
 
-class AuthMiddleware(object):
+def validate(request, schema, header_data=None):
+    """
+
+    """
+    req_data = request.json
+    if header_data:
+        for k, v in header_data.items():
+            if v:
+                req_data[k] = v
+    print("request data===>", req_data)
+
+    try:
+        data = schema().load(data=req_data, unknown=EXCLUDE)
+    except ValidationError as e:
+        print("Errors", e)
+        return abort(409, e.messages)
+    print("validated===data===>", data)
+    return data
+
+
+def marshal(resp, schema, res=None, req=None):
+    """
+    prepares the response object with the specified schema
+    :param resp: the falcon response object
+    :param res: the object
+    :param req: the object
+    :param schema: the schema class that should be used to validate the response
+    :return: falcon.Response
+    """
+    data = resp
+    resp_ = None
+
+    res_context = res.context if res else None
+    req_context = req.context if req else None
+
+    if isinstance(data, list) or isinstance(data, QuerySet):
+        print("it s me", schema)
+        resp_ = schema(context=dict(res=res_context, req=req_context)).dump(list(data), many=True)
+        print("after===>")
+    if isinstance(data, dict):
+        try:
+            resp_ = schema().load(data=data, unknown=EXCLUDE)
+        except ValidationError as e:
+            print("Errors", e)
+            return abort(409, e.messages)
+    if isinstance(data, MongoModel):
+        data.context_ = res_context
+        resp_ = schema(context=dict(res=res_context, req=req_context)).dump(data)
+
+    print("i am resp===========>")
+
+    return resp_
+
+
+def validate_date_filter(date_filter):
+    if type(date_filter) != dict:
+        return validate_date_string(date_filter)
+
+    filter_ = {}
+
+    for key, value in date_filter.items():
+        val = validate_date_string(value)
+        if not val:
+            continue
+        filter_[key] = val
+
+    return filter_
+
+
+def validate_date_string(date_string):
+    if type(date_string) == dict:
+        return validate_date_filter(date_string)
+    try:
+        return datetime.strptime(date_string, '%Y-%m-%d')
+    except ValueError:
+        return
+
+
+class AuthMiddleware(BaseHTTPMiddleware):
     '''
     Simple WSGI middleware
     '''
 
     def __init__(self, app, settings, ignored_endpoints=None):
+        super().__init__()
         self.app = app
         self.ignored_endpoints = ignored_endpoints
         self.settings = settings
 
-    def __call__(self, environ, start_response):
+    def dispatch(self, request, call_next):
 
-        request = Request(environ)
+        resource = self.app.view_functions.get(request.endpoint)
+        if not resource:
+            abort(404, {"desc": "Resource does  not exist"})
+
+        resource_class = resource.view_class
+
+        print(resource_class)
+        request.context = {}
+
         user_context = self.validate_token(token=request.headers.get("Authorization", None))
+        print("ia m ", user_context)
         if not user_context and not self.check_ignored_endpoints(path=request.path, base_path=self.settings.API_PREFIX):
-            res = Response("Authorization failed", content_type='application/json', status=401)
-            return res(environ, start_response)
+            return abort(401, {"message": "invalid token"})
 
-        environ['user_context'] = user_context
-        return self.app(environ, start_response)
+        request.context.update(user_context=user_context)
+        return call_next(request)
 
     def validate_token(self, token):
         """
@@ -47,11 +143,169 @@ class AuthMiddleware(object):
             return
 
         relative_path = path.split(base_path)[-1]
-
         for i in self.ignored_endpoints:
             if not i.startswith("/"):
                 i = "/" + i
             l = len(i)
+            print(i[:], relative_path[:l])
             if i[:] == relative_path[:l]:
                 return True
         return False
+
+
+class RequestResponseMiddleware(BaseHTTPMiddleware):
+    """
+
+    """
+
+    def __init__(self, app, settings):
+        super().__init__()
+        self.app = app
+        self.settings = settings
+
+    def dispatch(self, request, call_next):
+
+        resource = self.app.view_functions.get(request.endpoint)
+
+        resource_class = resource.view_class
+
+        validated_data = self.process_resource(request, resource=resource_class)
+
+        if type(validated_data) not in [dict, list]:
+            return validated_data
+
+        request.context.update(validated_data=validated_data)
+
+        print(request.context)
+        response = call_next(request)
+
+        req_method = request.method.lower()
+
+        print(request.values)
+
+        if req_method == "get" and not response.obj_id:
+            response = self.process_query(request, response, resource=resource_class)
+
+        response = self.process_response(request, response, resource=resource_class)
+
+        results = response.context.get("results")
+
+        if type(results) not in [dict, list]:
+            return results
+
+        if req_method == "get" and not response.obj_id:
+            print(response.context.get("resp", {}))
+            response.data = json.dumps({"results": results, **response.context.get("resp", {})})
+        else:
+            response.data = json.dumps(results)
+        return response
+
+    def process_resource(self, request, resource):
+        """
+
+        """
+        print(self)
+
+        print(resource.serializers, resource)
+        if request.method.lower() not in ["post", "put"]:
+            return {}
+
+        serializer = resource.serializers.get("default")
+        if not serializer:
+            abort(404, {"desc": "cannot make request to this route"})
+        return validate(request, serializer, header_data=request.headers)
+
+    def parse_type(self, k, v, resource):
+        """
+        check if the value of a param is an ObjectId and apply appropriate query modification
+        :param k:
+        :param resource:
+        :param v: the value to examine
+        :return:
+        """
+        attr = getattr(resource.service_klass.model_class, k, None)
+        if not attr:
+            return v
+
+        typ = type(attr)
+        name = typ.__name__
+
+        print(name)
+        if name == "ObjectIdField" or (name == "ReferenceField" and ObjectId.is_valid(v)):
+            return ObjectId(v)
+
+        if name == "DateTimeField":
+            return validate_date_filter(v)
+        return v
+
+    def process_query(self, request, response, resource):
+        """
+
+        """
+        print(self)
+        print(request.values.to_dict())
+
+        params = request.values.to_dict()
+
+        filter_by = params.get("filter_by")
+        results = {}
+        if filter_by:
+            request.filter_by = json.loads(filter_by)
+            response = self.filter_response(request, response, resource)
+        query = params.get("query")
+        if query:
+            request.query = query
+            response = self.query_response(request, response, resource)
+
+        sort = params.get("sort")
+        if sort:
+            request.sort = sort
+            response = self.sort_response(request, response, resource)
+
+        response.context.update(resp=params)
+
+        return response
+
+    def filter_response(self, request, response, resource):
+        """
+
+        """
+
+        filter_ = {}
+        for key, value in request.filter_by.items():
+            val = self.parse_type(k=key, v=value, resource=resource)
+            if not val:
+                continue
+            filter_[key] = val
+
+        results = response.context.get("results")
+        response.context.update(results=results.raw(filter_))
+        return response
+
+    def query_response(self, request, response, resource):
+        """
+
+        """
+        print(request.query)
+        return response
+
+    def sort_response(self, request, response, resource):
+        """
+
+        """
+        print(request.sort)
+        return response
+
+    def process_response(self, request, response, resource):
+        """
+
+        """
+        serializer = resource.serializers.get("response")
+
+        context = response.context
+
+        context.update(results=marshal(resp=response.context.get("results"), req=request, schema=serializer,
+                                       res=response))
+
+        response.context = context
+        return response

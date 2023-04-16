@@ -1,31 +1,18 @@
-from src.resources.auth import RegisterResource, LoginResource
-from src.services.core import *
-from src.resources.core import *
-from src.resources.apartment import ApartmentResource
-from src.services.apartment import ApartmentService
-from src.services.user import UserService
-from src.base.middleware import AuthMiddleware
-import settings
+from src.base.middleware import AuthMiddleware, RequestResponseMiddleware
+from flask_http_middleware import MiddlewareManager
 from src import app
-from src.base.utils import add_resource
-
-app.wsgi_app = AuthMiddleware(app.wsgi_app, settings=settings,
-                              ignored_endpoints=["/register", "/login", "/options", "/features",
-                                                 "/apartments"])
-
-option = OptionResource.initiate(serializers=core_serializers, service_klass=OptionService)
-feature = FeatureResource.initiate(serializers=core_serializers, service_klass=FeatureService)
-apartment = ApartmentResource.initiate(serializers=ApartmentResource.serializers, service_klass=ApartmentService)
-register = RegisterResource.initiate(serializers=RegisterResource.serializers, service_klass=UserService)
-login = LoginResource.initiate(serializers=LoginResource.serializers, service_klass=UserService)
+from src.routes.admin import *
+from src.routes.public import *
 
 
-add_resource(register, '/register')
-add_resource(login, '/login')
-add_resource(apartment, '/apartments', '/apartments/<string:obj_id>')
-add_resource(option, '/options', '/options/<string:obj_id>')
-add_resource(feature, '/features', '/features/<string:obj_id>')
+app.wsgi_app = MiddlewareManager(app)
+
+app.wsgi_app.add_middleware(AuthMiddleware, app=app, settings=settings,
+                            ignored_endpoints=["/register", "/login", "/options", "/features",
+                                               "/apartments"])
+app.wsgi_app.add_middleware(RequestResponseMiddleware, app=app, settings=settings)
+
+# ==============================================admin routes
 
 if __name__ == '__main__':
     app.run(debug=True, port=3000)
-

@@ -1,4 +1,4 @@
-from marshmallow import Schema, EXCLUDE, fields as _fields, validates, ValidationError
+from marshmallow import Schema, EXCLUDE, fields as _fields, validates, ValidationError, post_load
 
 from src.models import User
 
@@ -49,6 +49,7 @@ class LoginResponseSchema(UserResponseSchema):
     auth_token = _fields.String(required=True, allow_none=False)
 
 
+# noinspection PyTypeChecker
 class OptionSchema(ExcludeSchema):
     code = _fields.Nested(CoreSchema, required=True, allow_none=False)
     value = _fields.String(required=True, allow_none=False)
@@ -85,3 +86,23 @@ class ApartmentResponseSchema(ApartmentSchema):
     rating = _fields.Integer(required=False, allow_none=True)
     date_created = _fields.DateTime(required=True, allow_none=False)
     last_updated = _fields.DateTime(required=True, allow_none=False)
+
+
+class PersonSchema(ExcludeSchema):
+    """
+
+    """
+    name = _fields.String(required=True, allow_none=False)
+    first_name = _fields.String(required=True, allow_none=False)
+    last_name = _fields.String(required=True, allow_none=False)
+    email = _fields.String(required=True, allow_none=False)
+    phone = _fields.String(required=True, allow_none=False)
+
+
+class ReservationSchema(ExcludeSchema):
+    guest = _fields.Nested(PersonSchema(), required=True, blank=False)
+    check_in_date = _fields.String(required=True, blank=False)
+    checkout_date = _fields.String(required=True, blank=False)
+    apartment = _fields.String(required=True, allow_none=False)
+    note = _fields.String(required=False, blank=True)
+

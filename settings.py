@@ -27,7 +27,7 @@ if ENV not in ["staging", "production"]:
     load_dotenv(verbose=True, dotenv_path=dotenv_path)
 
 MONGO_DB_URI = os.getenv("MONGO_DATABASE_URI")
-MONGO_DATABASE = os.getenv("MONGO_DATABASE")
+MONGO_DATABASE = os.getenv("MONGO_DATABASE_URI")
 ENV = os.getenv("ENV")
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM")

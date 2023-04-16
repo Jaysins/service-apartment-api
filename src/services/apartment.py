@@ -1,7 +1,9 @@
 from ..base.service import ServiceFactory
-from ..models import Apartment
+from ..models import Apartment, Reservation, AvailableApartment
 
 BaseApartmentService = ServiceFactory.create_service(Apartment)
+BaseReservationService = ServiceFactory.create_service(Reservation)
+AvailableApartmentService = ServiceFactory.create_service(AvailableApartment)
 
 
 class ApartmentService(BaseApartmentService):
@@ -14,6 +16,13 @@ class ApartmentService(BaseApartmentService):
 
         """
 
-        user_id = "6136dfa7a1ab9d318bcfcb9d"
-        return cls.create(created_by=user_id, **kwargs)
+        return cls.create(created_by=kwargs.pop("user_id"), **kwargs)
 
+
+class ReservationService(BaseReservationService):
+
+    @classmethod
+    def register(cls, **kwargs):
+        """
+
+        """

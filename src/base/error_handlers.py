@@ -1,26 +1,12 @@
+from werkzeug.exceptions import HTTPException
+
 from src import app
 from flask import jsonify
 
 
-@app.errorhandler(404)
-def custom404(data):
-    response = jsonify(data)
-    response.status_code = 404
-    response.status = "error.NotFound"
-    return response
+@app.errorhandler(HTTPException)
+def handle_exception(response):
+    status_code = response.code if isinstance(response, HTTPException) else 500
 
-
-@app.errorhandler(401)
-def custom401(data):
-    response = jsonify(data)
-    response.status_code = 401
-    response.status = "error.Unauthorized"
-    return response
-
-
-@app.errorhandler(409)
-def custom409(data):
-    response = jsonify(data)
-    response.status_code = 409
-    response.status = "error.Validation Failed"
-    return response
+    print("hrrrr")
+    return jsonify(response), status_code

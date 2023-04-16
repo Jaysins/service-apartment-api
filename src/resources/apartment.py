@@ -10,9 +10,11 @@ class ApartmentResource(BaseResource):
     """
 
     serializers = {
-        "default": ApartmentSchema,
         "response": ApartmentResponseSchema
     }
+
+    def limit_get(self, obj, **kwargs):
+        return obj
 
     def query(self):
         """
@@ -22,48 +24,48 @@ class ApartmentResource(BaseResource):
         """
         return self.service_klass.objects.raw({"deleted": False})
 
-    def fetch(self, obj_id):
-        """
 
-        :param obj_id:
-        :type obj_id:
-        :return:
-        :rtype:
-        """
-        obj = self.service_klass.find_one({"_id": ObjectId(obj_id), "deleted": False})
-        return obj
+class AvailableApartmentResource(ApartmentResource):
+    """
 
-    # :TODO take out save
-    def save(self, data, user_context=None):
-        """
-
-        :param data:
-        :type data:
-        :param user_context:
-        :type user_context:
-        :return:
-        :rtype:
-        """
-        if user_context:
-            data["user_id"] = user_context.get("id")
-        return self.service_klass.register(**data)
+    """
 
 
 class AdminApartmentResource(ApartmentResource):
     serializers = {
         "default": ApartmentSchema,
+        "make_available": ApartmentSchema,
         "response": ApartmentResponseSchema
     }
 
-    def save(self, data, user_context=None):
+    def save(self, data, req, user_context=None):
         """
 
         :param data:
         :type data:
+        :param req:
+        :type req:
         :param user_context:
         :type user_context:
         :return:
         :rtype:
         """
+
         data["user_id"] = user_context.get("id")
         return self.service_klass.register(**data)
+
+    def make_available(self, obj_id, data, req, user_context):
+        """
+
+        :param obj_id:
+        :type obj_id:
+        :param data:
+        :type data:
+        :param req:
+        :type req:
+        :param user_context:
+        :type user_context:
+        :return:
+        :rtype:
+        """
+        return self.service_klass.get(obj_id)

@@ -156,6 +156,11 @@ class Address(EmbeddedMongoModel, AppMixin):
     country = fields.CharField(required=True, blank=False)
 
 
+class Status(AppMixin, MongoModel):
+    code = fields.CharField(primary_key=True)
+    name = fields.CharField(required=True, blank=False)
+
+
 class Option(AppMixin, MongoModel):
     code = fields.CharField(primary_key=True)
     name = fields.CharField(required=True, blank=False)
@@ -192,18 +197,47 @@ class Apartment(MongoModel, AppMixin):
 
 class Person(EmbeddedMongoModel, AppMixin):
     name = fields.CharField(required=True, blank=False)
+    first_name = fields.CharField(required=True, blank=False)
+    last_name = fields.CharField(required=True, blank=False)
     email = fields.CharField(required=True, blank=False)
     phone = fields.CharField(required=True, blank=False)
 
-# class CheckoutRequest(AppMixin, MongoModel):
-#     customer = fields.EmbeddedDocumentField
-#     checkin_date = fields.DateTimeField
-#     checkout_date = fields.DateTimeField
-#     date_created = fields.DateTimeField(required=True, blank=False, default=datetime.utcnow)
-#     last_updated = fields.DateTimeField(required=True, blank=False, default=datetime.utcnow)
-#
-#
-# class ApprovedRequest(AppMixin, MongoModel):
-#     checkout = fields.ReferenceField
-#     date_created = fields.DateTimeField(required=True, blank=False, default=datetime.utcnow)
-#     last_updated = fields.DateTimeField(required=True, blank=False, default=datetime.utcnow)
+
+class Reservation(AppMixin, MongoModel):
+    guest = fields.EmbeddedDocumentField(Person, required=True, blank=False)
+    check_in_date = fields.DateTimeField(required=True, blank=False)
+    checkout_date = fields.DateTimeField(required=True, blank=False)
+    apartment = fields.ReferenceField(Apartment, required=True, blank=False)
+    total_fee = fields.FloatField(required=True, blank=False)
+    note = fields.CharField(required=False, blank=True)
+    status = fields.ReferenceField(Status, required=True, blank=False)
+    date_created = fields.DateTimeField(required=True, blank=False, default=datetime.utcnow)
+    last_updated = fields.DateTimeField(required=True, blank=False, default=datetime.utcnow)
+
+
+class Booking(AppMixin, MongoModel):
+    status = fields.ReferenceField(Status, required=True, blank=False)
+    apartment = fields.ReferenceField(Apartment, required=True, blank=False)
+    number_of_guests = fields.FloatField()
+    check_in_date = fields.DateTimeField(required=True, blank=False)
+    checkout_date = fields.DateTimeField(required=True, blank=False)
+    date_created = fields.DateTimeField(required=True, blank=False, default=datetime.utcnow)
+    last_updated = fields.DateTimeField(required=True, blank=False, default=datetime.utcnow)
+
+
+class EmbeddedApartment(EmbeddedMongoModel, AppMixin):
+    name = fields.CharField(required=True, blank=False)
+    description = fields.CharField(required=True, blank=False)
+    options = fields.EmbeddedDocumentListField(ApartmentOption, required=True, blank=False)
+    fee = fields.FloatField(required=True, blank=False)
+    address = fields.EmbeddedDocumentField(Address, required=True, blank=False)
+
+
+class AvailableApartment(AppMixin, MongoModel):
+    apartment = fields.ReferenceField(Apartment, required=True)
+    apartment_data = fields.EmbeddedDocumentField(EmbeddedApartment, required=True)
+    check_in_date = fields.DateTimeField(required=True, blank=False)
+    checkout_date = fields.DateTimeField(required=True, blank=False)
+    service_days = fields.IntegerField(required=True, blank=False)
+    date_created = fields.DateTimeField(required=True, blank=False, default=datetime.utcnow)
+    last_updated = fields.DateTimeField(required=True, blank=False, default=datetime.utcnow)

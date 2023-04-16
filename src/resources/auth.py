@@ -15,11 +15,13 @@ class RegisterResource(BaseResource):
     def get(self, obj_id=None):
         abort(400)
 
-    def save(self, data, user_context=None):
+    def save(self, data, req, user_context=None):
         """
 
         :param data:
         :type data:
+        :param req:
+        :type req:
         :param user_context:
         :type user_context:
         :return:
@@ -37,16 +39,19 @@ class LoginResource(BaseResource):
     def get(self, obj_id=None):
         abort(400)
 
-    def save(self, data, user_context=None):
+    def save(self, data, req, user_context=None):
         """
 
         :param data:
         :type data:
+        :param req:
+        :type req:
         :param user_context:
         :type user_context:
         :return:
         :rtype:
         """
+
         email = data.get("email")
         user = self.service_klass.find_one({"email": email})
 
