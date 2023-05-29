@@ -2,6 +2,7 @@ from datetime import timedelta, datetime
 import settings
 from marshmallow import Schema, EXCLUDE, fields as _fields, validates, ValidationError, post_load
 
+from src.base.utils import validate_date_string
 from src.models import User
 
 
@@ -155,3 +156,19 @@ class CheckAvailabilitySchema(ExcludeSchema):
     days = _fields.Integer(required=True, allow_none=False)
     apartment_id = _fields.String(required=True, allow_none=False)
     check_in_date = _fields.String(required=True, allow_none=False)
+
+    @post_load
+    def prepare_payload(self, data, **kwargs):
+        """
+
+        :param data:
+        :type data:
+        :param kwargs:
+        :type kwargs:
+        :return:
+        :rtype:
+        """
+
+        check_in_date = validate_date_string(data.get("check_in_date"))
+        data["check_out_date"] = check_in_date + timedelta(days=data.get("days"))
+        return data

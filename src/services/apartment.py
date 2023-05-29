@@ -80,6 +80,10 @@ class AvailableApartmentService(BaseAvailableApartmentService):
         stay_days = kwargs.get("stay_days")
 
         check_in_date = kwargs.get("check_in_date")
-        booked = cls.find_one({"apartment": ObjectId(apartment_id), "check_in_date": {"$gte": check_in_date}})
+        check_out_date = kwargs.get("check_out_date")
 
+        check_ins = cls.objects.raw({"apartment": ObjectId(apartment_id),
+                                     "check_in_date": {"$gte": check_in_date, "$lte": check_out_date}})
+        for check in check_ins:
+            return
         return cls.get(obj_id)
