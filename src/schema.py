@@ -1,3 +1,5 @@
+from datetime import timedelta, datetime
+import settings
 from marshmallow import Schema, EXCLUDE, fields as _fields, validates, ValidationError, post_load
 
 from src.models import User
@@ -112,6 +114,18 @@ class MakeApartmentAvailableSchema(ExcludeSchema):
     check_out_date = _fields.String(required=False, allow_none=True)
     service_days = _fields.Integer(required=False, allow_none=True)
 
+    @post_load
+    def prepare_payload(self, data, **kwargs):
+        check_in_date = data.get("check_in_date")
+        check_out_date = data.get("check_out_date")
+
+        if not check_out_date and not check_in_date:
+            check_in_date = datetime.now()
+            check_out_date = check_in_date + timedelta(days=settings.DEFAULT_CHECKOUT_DATE)
+
+        data.update(check_in_date=check_in_date, check_out_date=check_out_date)
+        return data
+
 
 class NestedApartmentSchema(ExcludeSchema):
     """
@@ -125,10 +139,19 @@ class NestedApartmentSchema(ExcludeSchema):
 
 
 class AvailableApartmentSchema(ExcludeSchema):
+
     apartment = _fields.Nested(ApartmentResponseSchema(), required=True)
     apartment_data = _fields.Nested(NestedApartmentSchema(), required=True)
     check_in_date = _fields.DateTime(required=True, allow_none=False)
     checkout_date = _fields.DateTime(required=True, allow_none=False)
+    _id = _fields.String(required=False, allow_none=True)
+    pk = _fields.String(required=False, allow_none=True)
     service_days = _fields.String(required=False, allow_none=True)
     date_created = _fields.DateTime(required=True, allow_none=False)
     last_updated = _fields.DateTime(required=True, allow_none=False)
+
+
+class CheckAvailabilitySchema(ExcludeSchema):
+    days = _fields.Integer(required=True, allow_none=False)
+    apartment_id = _fields.String(required=True, allow_none=False)
+    check_in_date = _fields.String(required=True, allow_none=False)

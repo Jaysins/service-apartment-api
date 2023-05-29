@@ -123,3 +123,27 @@ def add_resource(resource, *args):
     from src import api
     print(*[f"{settings.API_PREFIX if settings.API_PREFIX else ''}{arg}" for arg in args])
     api.add_resource(resource, *[f"{settings.API_PREFIX if settings.API_PREFIX else ''}{arg}" for arg in args])
+
+
+def validate_date_filter(date_filter):
+    if type(date_filter) != dict:
+        return validate_date_string(date_filter)
+
+    filter_ = {}
+
+    for key, value in date_filter.items():
+        val = validate_date_string(value)
+        if not val:
+            continue
+        filter_[key] = val
+
+    return filter_
+
+
+def validate_date_string(date_string):
+    if type(date_string) == dict:
+        return validate_date_filter(date_string)
+    try:
+        return datetime.strptime(date_string, '%Y-%m-%d')
+    except ValueError:
+        return

@@ -4,12 +4,11 @@ from src import app, api
 from src.routes.admin import *
 from src.routes.public import *
 
-
 app.wsgi_app = MiddlewareManager(app)
 
 app.wsgi_app.add_middleware(AuthMiddleware, app=app, settings=settings,
                             ignored_endpoints=["/register", "/login", "/options", "/features",
-                                               "/apartments"])
+                                               "/apartments", "/available_apartments"])
 app.wsgi_app.add_middleware(RequestResponseMiddleware, app=app, api=api, settings=settings)
 
 # ==============================================admin routes

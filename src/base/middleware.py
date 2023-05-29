@@ -8,7 +8,7 @@ from flask_http_middleware import BaseHTTPMiddleware
 import jwt
 from marshmallow import EXCLUDE, ValidationError
 from bson import ObjectId
-from datetime import datetime
+from .utils import validate_date_filter
 
 
 def validate(request, schema, header_data=None):
@@ -41,11 +41,13 @@ def marshal(resp, schema, res=None, req=None):
     :return: falcon.Response
     """
     data = resp
+
     resp_ = None
 
     res_context = res.context if res else None
     req_context = req.context if req else None
 
+    print(isinstance(data, MongoModel), "sssss", data, resp)
     if isinstance(data, list) or isinstance(data, QuerySet):
         print("it s me", schema)
         resp_ = schema(context=dict(res=res_context, req=req_context)).dump(list(data), many=True)
@@ -57,36 +59,13 @@ def marshal(resp, schema, res=None, req=None):
             print("Errors", e)
             return abort(409, e.messages)
     if isinstance(data, MongoModel):
+        print("goooooooooo")
         data.context_ = res_context
         resp_ = schema(context=dict(res=res_context, req=req_context)).dump(data)
 
     print("i am resp===========>")
 
     return resp_
-
-
-def validate_date_filter(date_filter):
-    if type(date_filter) != dict:
-        return validate_date_string(date_filter)
-
-    filter_ = {}
-
-    for key, value in date_filter.items():
-        val = validate_date_string(value)
-        if not val:
-            continue
-        filter_[key] = val
-
-    return filter_
-
-
-def validate_date_string(date_string):
-    if type(date_string) == dict:
-        return validate_date_filter(date_string)
-    try:
-        return datetime.strptime(date_string, '%Y-%m-%d')
-    except ValueError:
-        return
 
 
 class AuthMiddleware(BaseHTTPMiddleware):
@@ -348,4 +327,6 @@ class RequestResponseMiddleware(BaseHTTPMiddleware):
                                        res=response))
 
         response.context = context
+
+        print(response.context)
         return response

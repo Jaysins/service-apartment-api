@@ -20,10 +20,12 @@ class BaseResource(Resource):
     def limit_query(self, query, req, user_context=None):
         """limit the results of a query to what want the user to see"""
         user_context = user_context
+
+        raw_query = {"deleted": False}
         if not user_context:
-            return query
+            return query.raw(raw_query)
         user_id = user_context.get("id")
-        raw_query = {"user_id": user_id}
+        raw_query.update({"user_id": user_id})
         return query.raw(raw_query)
 
     def limit_get(self, obj, req, user_context=None):
@@ -86,7 +88,7 @@ class BaseResource(Resource):
         """
         return self.service_klass.update(obj_id, **data)
 
-    def get(self, obj_id=None):
+    def get(self, obj_id=None, resource_name=None):
         """
 
         :return:

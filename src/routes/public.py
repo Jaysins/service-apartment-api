@@ -12,5 +12,7 @@ available_apartment = AvailableApartmentResource.initiate(serializers=AvailableA
 
 add_resource(apartment, '/apartments', '/apartments/<string:obj_id>',
              '/apartments/<string:obj_id>/<string:resource_name>')
+add_resource(available_apartment, '/available_apartments', '/available_apartments/<string:obj_id>',
+             '/available_apartments/<string:obj_id>/<string:resource_name>')
 add_resource(option, '/options', '/options/<string:obj_id>')
 add_resource(feature, '/features', '/features/<string:obj_id>')

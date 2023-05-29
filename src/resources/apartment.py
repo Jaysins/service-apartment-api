@@ -16,19 +16,33 @@ class ApartmentResource(BaseResource):
     def limit_get(self, obj, **kwargs):
         return obj
 
-    def query(self):
-        """
-
-        :return:
-        :rtype:
-        """
-        return self.service_klass.objects.raw({"deleted": False})
-
 
 class AvailableApartmentResource(ApartmentResource):
     """
 
     """
+
+    serializers = {
+        "default": CheckAvailabilitySchema,
+        "response": AvailableApartmentSchema
+    }
+
+    def check_availability(self, obj_id, data, req, user_context):
+        """
+
+        :param obj_id:
+        :type obj_id:
+        :param data:
+        :type data:
+        :param req:
+        :type req:
+        :param user_context:
+        :type user_context:
+        :return:
+        :rtype:
+        """
+
+        return self.service_klass.check_availability(obj_id, **data)
 
 
 class AdminApartmentResource(ApartmentResource):

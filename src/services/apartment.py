@@ -1,9 +1,11 @@
+from bson import ObjectId
+
 from ..base.service import ServiceFactory
 from ..models import Apartment, Reservation, AvailableApartment
 
 BaseApartmentService = ServiceFactory.create_service(Apartment)
 BaseReservationService = ServiceFactory.create_service(Reservation)
-AvailableApartmentService = ServiceFactory.create_service(AvailableApartment)
+BaseAvailableApartmentService = ServiceFactory.create_service(AvailableApartment)
 
 
 class ApartmentService(BaseApartmentService):
@@ -42,7 +44,7 @@ class ApartmentService(BaseApartmentService):
                 },
                 **kwargs}
 
-        apartment_data = ApartmentService.find_one({"apartment": apartment.pk})
+        apartment_data = AvailableApartmentService.find_one({"apartment": apartment.pk})
         if apartment_data:
             AvailableApartmentService.update(apartment_data.pk, **data)
         else:
@@ -57,3 +59,27 @@ class ReservationService(BaseReservationService):
         """
 
         """
+
+
+class AvailableApartmentService(BaseAvailableApartmentService):
+
+    @classmethod
+    def check_availability(cls, obj_id, apartment_id, **kwargs):
+        """
+
+        :param obj_id:
+        :type obj_id:
+        :param apartment_id:
+        :type apartment_id:
+        :param kwargs:
+        :type kwargs:
+        :return:
+        :rtype:
+        """
+
+        stay_days = kwargs.get("stay_days")
+
+        check_in_date = kwargs.get("check_in_date")
+        booked = cls.find_one({"apartment": ObjectId(apartment_id), "check_in_date": {"$gte": check_in_date}})
+
+        return cls.get(obj_id)
