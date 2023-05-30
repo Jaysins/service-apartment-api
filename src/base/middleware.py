@@ -321,6 +321,7 @@ class RequestResponseMiddleware(BaseHTTPMiddleware):
         if resource_name:
             serializer = resource.serializers.get("%s_response" % resource_name, serializer)
         if not getattr(response, "context", None):
+            response.context = {"results": {}}
             return response
 
         context = response.context
