@@ -6,4 +6,4 @@ app = Flask(__name__)
 
 api = Api(app)
 
-cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
+cors = CORS(app)

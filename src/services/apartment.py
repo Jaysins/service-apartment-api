@@ -82,8 +82,13 @@ class AvailableApartmentService(BaseAvailableApartmentService):
         check_in_date = kwargs.get("check_in_date")
         check_out_date = kwargs.get("check_out_date")
 
-        check_ins = cls.objects.raw({"apartment": ObjectId(apartment_id),
-                                     "check_in_date": {"$gte": check_in_date, "$lte": check_out_date}})
+        check_ins = ReservationService.objects.raw({"apartment": ObjectId(apartment_id),
+                                                    "$or": [{"check_in_date": {"$gte": check_in_date,
+                                                                               "$lte": check_out_date}},
+                                                            {"check_out_date": {"$gte": check_in_date,
+                                                                                "$lte": check_out_date}}, ],
+                                                    }).only("check_in_date", "check_out_date")
+
         for check in check_ins:
-            return
+            print("ia amam", check, )
         return cls.get(obj_id)
