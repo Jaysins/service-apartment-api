@@ -60,7 +60,7 @@ def marshal(resp, schema, res=None, req=None):
             return abort(409, e.messages)
     if isinstance(data, MongoModel):
         print("goooooooooo")
-        data.context_ = res_context
+        print(res_context, req_context, data)
         resp_ = schema(context=dict(res=res_context, req=req_context)).dump(data)
 
     print("i am resp===========>")
